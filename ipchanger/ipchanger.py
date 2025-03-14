@@ -4,6 +4,7 @@ import os
 import subprocess
 import time
 import json
+import syslog
 from huawei_lte_api.Client import Client
 from huawei_lte_api.Connection import Connection
 
@@ -46,7 +47,7 @@ def changeModemIP(modem, client) -> bool:
     # то делаем модему выкл/вкл и ждем оставшуюся половину времени
     for i in range(wait_time):
         status = client.monitoring.status()
-        if status.get('ConnectionStatus') == ConnectionStatusEnum.CONNECTED:
+        if status.get('ConnectionStatus') == str(ConnectionStatusEnum.CONNECTED):
             break
         if i >= wait_time / 2:
             client.dial_up.set_mobile_dataswitch(0)
@@ -55,12 +56,14 @@ def changeModemIP(modem, client) -> bool:
         time.sleep(1)
     # если все ок, то возвращаем True
     # если так и не дождались подключения к сети, то сдаемся и возвращаем False
-    if status.get('ConnectionStatus') == ConnectionStatusEnum.CONNECTED:
+    if status.get('ConnectionStatus') == str(ConnectionStatusEnum.CONNECTED):
+        syslog.syslog(syslog.LOG_ERR, 'Success changeModemIP')
         return True
     else:
+        syslog.syslog(syslog.LOG_ERR, 'Failed changeModemIP')
         return False
 
-# Проверяет на уникальность выделенный опператором бедый IP
+# Проверяет на уникальность выделенный опператором белый IP
 def checkModemConnection(modem) -> bool:
     # srv_addr, srv_port
     command1 = "echo \"show servers state\" | socat stdio tcp4-connect:127.0.0.1:1350 | grep -E \"(" + modem + ".*){2}\" | cut -d \" \" -f 5,19"
